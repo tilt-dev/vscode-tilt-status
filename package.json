@@ -10,16 +10,18 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:tilt-vscode.helloWorld"
+		"onView:tiltResources"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": [
-			{
-				"command": "tilt-vscode.helloWorld",
-				"title": "Hello World"
-			}
-		]
+		"views": {
+			"explorer": [
+				{
+					"id": "tiltResources",
+					"name": "Tilt Resources"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "yarn run compile",
