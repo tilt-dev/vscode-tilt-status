@@ -14,11 +14,22 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "tilt-explorer",
+					"title": "Tilt",
+					"icon": "media/logo.svg"
+				}
+			]
+		},
 		"views": {
-			"explorer": [
+			"tilt-explorer": [
 				{
 					"id": "tiltResources",
-					"name": "Tilt Resources"
+					"name": "Tilt",
+					"icon": "media/logo.svg",
+					"contextualTitle": "Tilt Resources"
 				}
 			]
 		}
@@ -45,6 +56,8 @@
 		"vscode-test": "^1.5.0"
 	},
 	"dependencies": {
-		"@kubernetes/client-node": "^0.14.3"
+		"@kubernetes/client-node": "^0.14.3",
+		"date-fns": "^2.21.3",
+		"timeago.js": "^4.0.2"
 	}
 }
