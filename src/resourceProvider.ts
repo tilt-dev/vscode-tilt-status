@@ -2,10 +2,25 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ext } from './extensionVariables';
-import { V1alpha1Target } from './gen/api';
-import { ListWatch, Watch } from '@kubernetes/client-node';
+import { TiltDevV1alpha1Api, V1alpha1Session, V1alpha1Target } from './gen/api';
+import { ADD, CHANGE, ERROR, ListWatch, makeInformer, UPDATE, Watch } from '@kubernetes/client-node';
 
 export class ResourceProvider implements vscode.TreeDataProvider<Resource> {
+    cache: ListWatch<V1alpha1Session>;
+
+    constructor() {
+        const watch = new Watch(ext.config);
+        const listFn = () => ext.client.listSession();
+        this.cache = new ListWatch('/apis/v1alpha/sessions', watch, listFn, true);
+        this.cache.on(CHANGE, (session) => {
+            console.log(`Session ${session.metadata?.name} changed`);
+            this._onDidChangeTreeData.fire();
+        });
+        this.cache.on(ERROR, (obj) => {
+            console.error(`Error: ${obj}`);
+        });
+    }
+
     private _onDidChangeTreeData: vscode.EventEmitter<Resource | undefined | null | void> = new vscode.EventEmitter<Resource | undefined | null | void>();
 
     readonly onDidChangeTreeData?: vscode.Event<void | Resource | null | undefined> | undefined = this._onDidChangeTreeData.event;
@@ -18,18 +33,13 @@ export class ResourceProvider implements vscode.TreeDataProvider<Resource> {
         return this.getResourcesForSession("");
     }
 
-    private async getResourcesForSession(tiltfilePath: string): Promise<Resource[]> {
-        // if (!this.pathExists(tiltfilePath)) {
-        //     return [];
-        // }
-
-        try {
-            const session = await ext.client.readSessionStatus("Tiltfile");
-            return session.body.status?.targets.map(t => new Resource(t, vscode.TreeItemCollapsibleState.None)) ?? [];
-        } catch (e) {
-            console.error(e);
+    private getResourcesForSession(tiltfilePath: string): Resource[] {
+        const sessions = this.cache.list('');
+        if (!sessions) {
+            console.log('No sessions exist in cache');
             return [];
         }
+        return sessions[0]?.status?.targets.map(t => new Resource(t, vscode.TreeItemCollapsibleState.None)) || [];
     }
 
     private pathExists(p: string): boolean {
