@@ -1,69 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
 import { ext } from './extensionVariables';
-import { TiltDevV1alpha1Api, V1alpha1Session, V1alpha1Target } from './gen/api';
-import { ADD, CHANGE, ERROR, ListWatch, makeInformer, UPDATE, Watch } from '@kubernetes/client-node';
-import { formatDistanceToNowStrict, parseISO } from 'date-fns';
-import locale from 'date-fns/locale/en-US';
-import { SSL_OP_NO_COMPRESSION } from 'constants';
+import { V1alpha1Session, V1alpha1Target } from './gen/api';
+import { CHANGE, ERROR, ListWatch, Watch } from '@kubernetes/client-node';
+import timeago from './time';
 
-const timeago = (date: Date | string | null): string => {
-    if (!date) {
-        return "";
-    }
-
-    // Watch just does JSON deserialize, so dates come back as ISO8601 strings
-    // even though the TS type _thinks_ it has a JS Date
-    if (typeof date === 'string') {
-        date = parseISO(date);
-    }
-
-    return formatDistanceToNowStrict(date, {
-        addSuffix: true,
-        locale: {
-          ...locale,
-          formatDistance,
-      },
-    });
-};
-
-const formatDistanceLocale: { [key: string]: string } = {
-    lessThanXSeconds: '{{count}}s',
-    xSeconds: '{{count}}s',
-    halfAMinute: '30s',
-    lessThanXMinutes: '{{count}}m',
-    xMinutes: '{{count}}m',
-    aboutXHours: '{{count}}h',
-    xHours: '{{count}}h',
-    xDays: '{{count}}d',
-    aboutXWeeks: '{{count}}w',
-    xWeeks: '{{count}}w',
-    aboutXMonths: '{{count}}m',
-    xMonths: '{{count}}m',
-    aboutXYears: '{{count}}y',
-    xYears: '{{count}}y',
-    overXYears: '{{count}}y',
-    almostXYears: '{{count}}y',
-  };
-
-  function formatDistance(token: string, count: any, options: any): string {
-    options = options || {};
-
-    const result = formatDistanceLocale[token].replace('{{count}}', count);
-
-    if (options.addSuffix) {
-      if (options.comparison > 0) {
-        return 'in ' + result;
-      } else {
-        return result + ' ago';
-      }
-    }
-
-    return result;
-  }
-
-export class ResourceProvider implements vscode.TreeDataProvider<Resource> {
+export class ResourceProvider implements vscode.TreeDataProvider<Item> {
     cache: ListWatch<V1alpha1Session>;
 
     constructor() {
@@ -80,39 +22,207 @@ export class ResourceProvider implements vscode.TreeDataProvider<Resource> {
         });
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<Resource | undefined | null | void> = new vscode.EventEmitter<Resource | undefined | null | void>();
+    private _onDidChangeTreeData: vscode.EventEmitter<Item | undefined | null | void> = new vscode.EventEmitter<Item | undefined | null | void>();
 
-    readonly onDidChangeTreeData?: vscode.Event<void | Resource | null | undefined> | undefined = this._onDidChangeTreeData.event;
+    readonly onDidChangeTreeData?: vscode.Event<void | Item | null | undefined> | undefined = this._onDidChangeTreeData.event;
 
-    getTreeItem(element: Resource): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(element: Item): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
 
-    getChildren(element?: Resource): vscode.ProviderResult<Resource[]> {
-        return this.getResourcesForSession("");
+    getChildren(element?: Item): vscode.ProviderResult<Item[]> {
+        const resources = this.getTargetsByResource();
+
+        if (element) {
+            if (element.type !== ItemType.resource) {
+                return [];
+            }
+
+            const targets = resources[element.name];
+            const items = targets.map(t => {
+                const prefix = element.name === '(Tiltfile)' ? 'tiltfile' : element.name;
+                const name = t.name.replace(`${prefix}:`, '');
+                const [status, time] = statusFromTarget(t);
+                const item = new Item(
+                    name,
+                    vscode.TreeItemCollapsibleState.None,
+                    ItemType.target,
+                    status,
+                    time
+                );
+                item.tooltip = targetTooltip(t);
+                return item;
+            });
+            return items;
+        }
+
+        const items = Object.keys(resources).map(name => {
+            const targets = resources[name];
+            const [status, time] = resourceStatusFromTargets(targets);
+            const item = new Item(
+                name,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                ItemType.resource,
+                status,
+                time
+            );
+            const tooltip = new vscode.MarkdownString();
+            for (const t of targets) {
+                tooltip.appendMarkdown(targetTooltip(t).value);
+                tooltip.appendMarkdown('\n\n');
+            }
+            item.tooltip = tooltip;
+            return item;
+        });
+        return items;
     }
 
-    private getResourcesForSession(tiltfilePath: string): Resource[] {
+    private getTargetsByResource(): { [key: string]: V1alpha1Target[] } {
         const session = this.cache.get('Tiltfile');
         if (!session) {
             console.log('No session exists');
-            return [];
+            return {};
         }
-        return session?.status?.targets.map(t => new Resource(t, vscode.TreeItemCollapsibleState.None)) || [];
+
+        const resources = (session.status?.targets || []).reduce((resources, target) => {
+            for (const r of target.resources) {
+                const targets = (resources[r] || []);
+                targets.push(target);
+                resources[r] = targets;
+            }
+            return resources;
+        }, {} as { [key: string]: V1alpha1Target[] });
+        return resources;
     }
-
-    private pathExists(p: string): boolean {
-		try {
-			fs.accessSync(p);
-		} catch (err) {
-			return false;
-		}
-
-		return true;
-	}
 }
 
-export class Resource extends vscode.TreeItem {
+enum Status {
+    unknown = "unknown",
+    disabled = "disabled",
+    pending = "pending",
+    ok = "ok",
+    error = "error"
+}
+
+enum ItemType {
+    resource,
+    target
+}
+
+export class Item extends vscode.TreeItem {
+    constructor(
+        public readonly name: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly type: ItemType,
+        public readonly status: Status | undefined,
+        public readonly time: Date | string | undefined,
+    ) {
+        super(name, collapsibleState);
+
+        if (status) {
+            let iconName: string;
+            let iconColor: vscode.ThemeColor | undefined;
+            switch (status) {
+                case Status.disabled:
+                    iconName = 'circle-slash';
+                    iconColor = 'list.deemphasizedForeground';
+                    break;
+                case Status.pending:
+                    iconName = 'ellipsis';
+                    break;
+                case Status.ok:
+                    iconName = 'check';
+                    iconColor = 'debugIcon.startForeground';
+                    break;
+                case Status.error:
+                    iconName = 'warning';
+                    iconColor = 'list.errorForeground';
+                    break;
+                default:
+                    iconName = 'question';
+                    break;
+            }
+
+            if (iconName) {
+                this.iconPath = new vscode.ThemeIcon(iconName, iconColor);
+            }
+        }
+
+        this.description = timeago(time);
+    }
+}
+
+function resourceStatusFromTargets(targets: V1alpha1Target[]): [Status, Date | undefined] {
+    const statuses = new Map<Status, Date | undefined>();
+    for (const t of targets) {
+        const [targetStatus, time] = statusFromTarget(t);
+        if (!statuses.has(targetStatus) || (time && time > (statuses.get(targetStatus) ?? new Date()))) {
+            statuses.set(targetStatus, time);
+        }
+    }
+
+    const statusPriorities = [Status.error, Status.pending, Status.ok, Status.disabled];
+    for (const s of statusPriorities) {
+        if (statuses.has(s)) {
+            return [s, statuses.get(s)];
+        }
+    }
+
+    return [Status.unknown, undefined];
+}
+
+function statusFromTarget(target: V1alpha1Target): [Status, Date | undefined] {
+    if (target.state.waiting) {
+        return [Status.pending, undefined];
+    }
+
+    if (target.state.active) {
+        if (target.type === 'job' || !target.state.active.ready) {
+            return [Status.pending, target.state.active.startTime];
+        }
+        return [Status.ok, target.state.active.startTime];
+    }
+
+    if (target.state.terminated) {
+        // HACK: finish time is sometimes undefined, so just pick start time instead
+        const time = target.state.terminated.finishTime ?? target.state.terminated.startTime;
+        if (target.type === 'server' || target.state.terminated.error) {
+            return [Status.error, time];
+        }
+        return [Status.ok, time];
+    }
+
+    return [Status.disabled, undefined];
+}
+
+function targetTooltip(target: V1alpha1Target): vscode.MarkdownString {
+    let lines: string[] = [
+        `### ${target.name}`,
+        `- **Type**: ${target.type}`
+    ];
+    if (target.state.waiting) {
+        lines.push('- **State**: Waiting');
+        lines.push(`- **Reason**: ${target.state.waiting.waitReason}`);
+    } else if (target.state.active) {
+        lines.push('- **State**: Active');
+        lines.push(`- **Start**: ${timeago(target.state.active.startTime)}`);
+        lines.push(`- **Ready**: ${!!target.state.active}`);
+    } else if (target.state.terminated) {
+        lines.push('- **State**: Terminated');
+        lines.push(`- **Start**: ${timeago(target.state.terminated.startTime)}`);
+        if (target.state.terminated.finishTime) {
+            lines.push(`- **Finish**: ${timeago(target.state.terminated.finishTime)}`);
+        }
+        if (target.state.terminated.error) {
+            lines.push('- **Error**:');
+            lines.push('  ```\n' + target.state.terminated.error + '\n  ```');
+        }
+    }
+
+    return new vscode.MarkdownString(lines.join('\n'));
+}
+
+export class Target extends vscode.TreeItem {
     constructor(
         public readonly target: V1alpha1Target,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
