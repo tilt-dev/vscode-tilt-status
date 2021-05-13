@@ -4,21 +4,31 @@ import { ext } from './extensionVariables';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import { CHANGE, ERROR, ListWatch, Watch } from '@kubernetes/client-node';
 import timeago from './time';
+import { V1alpha1KubernetesDiscovery } from './gen/model/v1alpha1KubernetesDiscovery';
+import { V1alpha1Pod } from './gen/model/v1alpha1Pod';
 
 export class ResourceProvider implements vscode.TreeDataProvider<Item> {
-    cache: ListWatch<V1alpha1Session>;
+    sessions: ListWatch<V1alpha1Session>;
+    kube: ListWatch<V1alpha1KubernetesDiscovery>;
 
     constructor() {
-        const watch = new Watch(ext.config);
-        const listFn = () => ext.client.listSession();
-        this.cache = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', watch, listFn, true);
-        this.cache.on(CHANGE, (session) => {
-            session.metadata?.creationTimestamp
+        const sessionWatch = new Watch(ext.config);
+        const sessionListFn = () => ext.client.listSession();
+        this.sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn, true);
+        this.sessions.on(CHANGE, (session) => {
             console.log(`Session ${session.metadata?.name} changed`);
             this._onDidChangeTreeData.fire();
         });
-        this.cache.on(ERROR, (obj) => {
-            console.error(`Error: ${obj}`);
+        this.sessions.on(ERROR, (obj) => {
+            console.error(`Session Watch Error: ${obj}`);
+        });
+
+        const kubeWatch = new Watch(ext.config);
+        const kubeListFn = () => ext.client.listKubernetesDiscovery();
+        this.kube = new ListWatch('/apis/tilt.dev/v1alpha1/kubernetesdiscoveries', kubeWatch, kubeListFn, true);
+        this.kube.on(CHANGE, (kd) => {
+            console.log(`KubernetesDiscovery ${kd.metadata?.name} changed`);
+            this._onDidChangeTreeData.fire();
         });
     }
 
@@ -31,35 +41,58 @@ export class ResourceProvider implements vscode.TreeDataProvider<Item> {
     }
 
     getChildren(element?: Item): vscode.ProviderResult<Item[]> {
-        const resources = this.getTargetsByResource();
+        const targets = this.getTargets();
+        const targetsByResource = this.targetsByResource(targets);
 
         if (element) {
-            if (element.type !== ItemType.resource) {
-                return [];
+            if (element.type === ItemType.resource) {
+                const targets = targetsByResource[element.name];
+                const items = targets.map(t => {
+                    const type = targetType(t.name);
+                    const [status, time] = statusFromTarget(t);
+                    const targetPods = this.podsForTarget(t);
+                    const item = new Item(
+                        t.name,
+                        type.toString(),
+                        targetPods.length === 0 ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed,
+                        ItemType.target,
+                        status,
+                        time
+                    );
+                    item.tooltip = targetTooltip(t);
+                    return item;
+                });
+                return items;
+            } else if (element.type === ItemType.target) {
+                const target = targets.find((t) => t.name === element.id);
+                if (!target) {
+                    return [];
+                }
+
+                const pods = this.podsForTarget(target);
+                const items = pods.map((p) => {
+                    const [status, time] = statusFromPod(p);
+                    const item = new Item(
+                        p.name,
+                        p.name,
+                        vscode.TreeItemCollapsibleState.None,
+                        ItemType.pod,
+                        status,
+                        time
+                    );
+                    return item;
+                });
+                return items;
             }
 
-            const targets = resources[element.name];
-            const items = targets.map(t => {
-                const prefix = element.name === '(Tiltfile)' ? 'tiltfile' : element.name;
-                const name = t.name.replace(`${prefix}:`, '');
-                const [status, time] = statusFromTarget(t);
-                const item = new Item(
-                    name,
-                    vscode.TreeItemCollapsibleState.None,
-                    ItemType.target,
-                    status,
-                    time
-                );
-                item.tooltip = targetTooltip(t);
-                return item;
-            });
-            return items;
+            return [];
         }
 
-        const items = Object.keys(resources).map(name => {
-            const targets = resources[name];
+        const items = Object.keys(targetsByResource).sort().map(name => {
+            const targets = targetsByResource[name];
             const [status, time] = resourceStatusFromTargets(targets);
             const item = new Item(
+                name,
                 name,
                 vscode.TreeItemCollapsibleState.Collapsed,
                 ItemType.resource,
@@ -77,14 +110,17 @@ export class ResourceProvider implements vscode.TreeDataProvider<Item> {
         return items;
     }
 
-    private getTargetsByResource(): { [key: string]: V1alpha1Target[] } {
-        const session = this.cache.get('Tiltfile');
+    private getTargets(): V1alpha1Target[] {
+        const session = this.sessions.get('Tiltfile');
         if (!session) {
             console.log('No session exists');
-            return {};
+            return [];
         }
+        return session.status?.targets || [];
+    }
 
-        const resources = (session.status?.targets || []).reduce((resources, target) => {
+    private targetsByResource(targets: V1alpha1Target[]): { [key: string]: V1alpha1Target[] } {
+        const resources = targets.reduce((resources, target) => {
             for (const r of target.resources) {
                 const targets = (resources[r] || []);
                 targets.push(target);
@@ -93,6 +129,22 @@ export class ResourceProvider implements vscode.TreeDataProvider<Item> {
             return resources;
         }, {} as { [key: string]: V1alpha1Target[] });
         return resources;
+    }
+
+    private podsForTarget(target: V1alpha1Target): V1alpha1Pod[] {
+        const tt = targetType(target.name);
+        if (tt !== TargetType.runtime) {
+            return [];
+        }
+        const resources = new Set<string>(target.resources);
+        const pods: V1alpha1Pod[] = [];
+        for (const kd of this.kube.list()) {
+            if (!resources.has(kd.metadata?.annotations?.['tilt.dev/resource'] ?? '')) {
+                continue;
+            }
+            pods.push(...(kd.status?.pods || []));
+        }
+        return pods;
     }
 }
 
@@ -106,11 +158,13 @@ enum Status {
 
 enum ItemType {
     resource,
-    target
+    target,
+    pod
 }
 
 export class Item extends vscode.TreeItem {
     constructor(
+        public readonly id: string,
         public readonly name: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly type: ItemType,
@@ -150,6 +204,29 @@ export class Item extends vscode.TreeItem {
 
         this.description = timeago(time);
     }
+}
+
+enum TargetType {
+    unknown = "unknown",
+    update = "update",
+    runtime = "runtime"
+}
+
+function targetType(name: string): TargetType {
+    const split = name.split(':', 2);
+    let tt: TargetType = TargetType.unknown;
+    switch(split[1]) {
+        case TargetType.update.toString():
+            tt = TargetType.update;
+            break;
+        case TargetType.runtime.toString():
+            tt = TargetType.runtime;
+            break;
+        default:
+            tt = TargetType.unknown;
+            break;
+    }
+    return tt;
 }
 
 function resourceStatusFromTargets(targets: V1alpha1Target[]): [Status, Date | undefined] {
@@ -261,4 +338,36 @@ ${target.state.terminated.error}
     }
 
     contextValue = 'tilt-resource';
+}
+
+function statusFromPod(pod: V1alpha1Pod): [Status, Date | undefined] {
+    const time = pod.createdAt;
+
+    if (pod.errors.length !== 0) {
+        return [Status.error, time];
+    }
+
+    switch (pod.phase) {
+        case "Running":
+            break;
+        case "Pending":
+            return [Status.pending, time];
+        case "Succeeded":
+            return [Status.ok, time];
+        case "Failed":
+            return [Status.error, time];
+        default:
+            return [Status.unknown, time];
+    }
+
+    for (const c of pod.containers) {
+        if (c.state.terminated && c.state.terminated.exitCode !== 0) {
+            return [Status.error, time];
+        }
+        if (c.state.waiting || c.state.running && !c.ready) {
+            return [Status.pending, time];
+        }
+    }
+
+    return [Status.ok, time];
 }

@@ -4,6 +4,8 @@ export * from './v1APIResource';
 export * from './v1APIResourceList';
 export * from './v1DeleteOptions';
 export * from './v1GroupVersionForDiscovery';
+export * from './v1LabelSelector';
+export * from './v1LabelSelectorRequirement';
 export * from './v1ListMeta';
 export * from './v1ManagedFieldsEntry';
 export * from './v1ObjectMeta';
@@ -21,7 +23,12 @@ export * from './v1alpha1CmdStateRunning';
 export * from './v1alpha1CmdStateTerminated';
 export * from './v1alpha1CmdStateWaiting';
 export * from './v1alpha1CmdStatus';
+export * from './v1alpha1Container';
 export * from './v1alpha1ContainerLogStreamStatus';
+export * from './v1alpha1ContainerState';
+export * from './v1alpha1ContainerStateRunning';
+export * from './v1alpha1ContainerStateTerminated';
+export * from './v1alpha1ContainerStateWaiting';
 export * from './v1alpha1ExecAction';
 export * from './v1alpha1FileEvent';
 export * from './v1alpha1FileWatch';
@@ -31,6 +38,13 @@ export * from './v1alpha1FileWatchStatus';
 export * from './v1alpha1HTTPGetAction';
 export * from './v1alpha1HTTPHeader';
 export * from './v1alpha1IgnoreDef';
+export * from './v1alpha1KubernetesDiscovery';
+export * from './v1alpha1KubernetesDiscoveryList';
+export * from './v1alpha1KubernetesDiscoverySpec';
+export * from './v1alpha1KubernetesDiscoveryStatus';
+export * from './v1alpha1KubernetesWatchRef';
+export * from './v1alpha1Pod';
+export * from './v1alpha1PodCondition';
 export * from './v1alpha1PodLogStream';
 export * from './v1alpha1PodLogStreamList';
 export * from './v1alpha1PodLogStreamSpec';
@@ -47,9 +61,24 @@ export * from './v1alpha1TargetState';
 export * from './v1alpha1TargetStateActive';
 export * from './v1alpha1TargetStateTerminated';
 export * from './v1alpha1TargetStateWaiting';
+export * from './v1alpha1TiltBuild';
+export * from './v1alpha1UIBuildRunning';
+export * from './v1alpha1UIBuildTerminated';
+export * from './v1alpha1UIFeatureFlag';
+export * from './v1alpha1UIResource';
+export * from './v1alpha1UIResourceKubernetes';
+export * from './v1alpha1UIResourceLink';
+export * from './v1alpha1UIResourceList';
+export * from './v1alpha1UIResourceLocal';
+export * from './v1alpha1UIResourceStatus';
+export * from './v1alpha1UIResourceTargetSpec';
+export * from './v1alpha1UISession';
+export * from './v1alpha1UISessionList';
+export * from './v1alpha1UISessionStatus';
+export * from './v1alpha1VersionSettings';
 export * from './versionInfo';
 
-import localVarRequest from 'request';
+import localVarRequest = require('request');
 
 import { V1APIGroup } from './v1APIGroup';
 import { V1APIGroupList } from './v1APIGroupList';
@@ -57,6 +86,8 @@ import { V1APIResource } from './v1APIResource';
 import { V1APIResourceList } from './v1APIResourceList';
 import { V1DeleteOptions } from './v1DeleteOptions';
 import { V1GroupVersionForDiscovery } from './v1GroupVersionForDiscovery';
+import { V1LabelSelector } from './v1LabelSelector';
+import { V1LabelSelectorRequirement } from './v1LabelSelectorRequirement';
 import { V1ListMeta } from './v1ListMeta';
 import { V1ManagedFieldsEntry } from './v1ManagedFieldsEntry';
 import { V1ObjectMeta } from './v1ObjectMeta';
@@ -74,7 +105,12 @@ import { V1alpha1CmdStateRunning } from './v1alpha1CmdStateRunning';
 import { V1alpha1CmdStateTerminated } from './v1alpha1CmdStateTerminated';
 import { V1alpha1CmdStateWaiting } from './v1alpha1CmdStateWaiting';
 import { V1alpha1CmdStatus } from './v1alpha1CmdStatus';
+import { V1alpha1Container } from './v1alpha1Container';
 import { V1alpha1ContainerLogStreamStatus } from './v1alpha1ContainerLogStreamStatus';
+import { V1alpha1ContainerState } from './v1alpha1ContainerState';
+import { V1alpha1ContainerStateRunning } from './v1alpha1ContainerStateRunning';
+import { V1alpha1ContainerStateTerminated } from './v1alpha1ContainerStateTerminated';
+import { V1alpha1ContainerStateWaiting } from './v1alpha1ContainerStateWaiting';
 import { V1alpha1ExecAction } from './v1alpha1ExecAction';
 import { V1alpha1FileEvent } from './v1alpha1FileEvent';
 import { V1alpha1FileWatch } from './v1alpha1FileWatch';
@@ -84,6 +120,13 @@ import { V1alpha1FileWatchStatus } from './v1alpha1FileWatchStatus';
 import { V1alpha1HTTPGetAction } from './v1alpha1HTTPGetAction';
 import { V1alpha1HTTPHeader } from './v1alpha1HTTPHeader';
 import { V1alpha1IgnoreDef } from './v1alpha1IgnoreDef';
+import { V1alpha1KubernetesDiscovery } from './v1alpha1KubernetesDiscovery';
+import { V1alpha1KubernetesDiscoveryList } from './v1alpha1KubernetesDiscoveryList';
+import { V1alpha1KubernetesDiscoverySpec } from './v1alpha1KubernetesDiscoverySpec';
+import { V1alpha1KubernetesDiscoveryStatus } from './v1alpha1KubernetesDiscoveryStatus';
+import { V1alpha1KubernetesWatchRef } from './v1alpha1KubernetesWatchRef';
+import { V1alpha1Pod } from './v1alpha1Pod';
+import { V1alpha1PodCondition } from './v1alpha1PodCondition';
 import { V1alpha1PodLogStream } from './v1alpha1PodLogStream';
 import { V1alpha1PodLogStreamList } from './v1alpha1PodLogStreamList';
 import { V1alpha1PodLogStreamSpec } from './v1alpha1PodLogStreamSpec';
@@ -100,6 +143,21 @@ import { V1alpha1TargetState } from './v1alpha1TargetState';
 import { V1alpha1TargetStateActive } from './v1alpha1TargetStateActive';
 import { V1alpha1TargetStateTerminated } from './v1alpha1TargetStateTerminated';
 import { V1alpha1TargetStateWaiting } from './v1alpha1TargetStateWaiting';
+import { V1alpha1TiltBuild } from './v1alpha1TiltBuild';
+import { V1alpha1UIBuildRunning } from './v1alpha1UIBuildRunning';
+import { V1alpha1UIBuildTerminated } from './v1alpha1UIBuildTerminated';
+import { V1alpha1UIFeatureFlag } from './v1alpha1UIFeatureFlag';
+import { V1alpha1UIResource } from './v1alpha1UIResource';
+import { V1alpha1UIResourceKubernetes } from './v1alpha1UIResourceKubernetes';
+import { V1alpha1UIResourceLink } from './v1alpha1UIResourceLink';
+import { V1alpha1UIResourceList } from './v1alpha1UIResourceList';
+import { V1alpha1UIResourceLocal } from './v1alpha1UIResourceLocal';
+import { V1alpha1UIResourceStatus } from './v1alpha1UIResourceStatus';
+import { V1alpha1UIResourceTargetSpec } from './v1alpha1UIResourceTargetSpec';
+import { V1alpha1UISession } from './v1alpha1UISession';
+import { V1alpha1UISessionList } from './v1alpha1UISessionList';
+import { V1alpha1UISessionStatus } from './v1alpha1UISessionStatus';
+import { V1alpha1VersionSettings } from './v1alpha1VersionSettings';
 import { VersionInfo } from './versionInfo';
 
 /* tslint:disable:no-unused-variable */
@@ -124,6 +182,8 @@ let typeMap: {[index: string]: any} = {
     "V1APIResourceList": V1APIResourceList,
     "V1DeleteOptions": V1DeleteOptions,
     "V1GroupVersionForDiscovery": V1GroupVersionForDiscovery,
+    "V1LabelSelector": V1LabelSelector,
+    "V1LabelSelectorRequirement": V1LabelSelectorRequirement,
     "V1ListMeta": V1ListMeta,
     "V1ManagedFieldsEntry": V1ManagedFieldsEntry,
     "V1ObjectMeta": V1ObjectMeta,
@@ -141,7 +201,12 @@ let typeMap: {[index: string]: any} = {
     "V1alpha1CmdStateTerminated": V1alpha1CmdStateTerminated,
     "V1alpha1CmdStateWaiting": V1alpha1CmdStateWaiting,
     "V1alpha1CmdStatus": V1alpha1CmdStatus,
+    "V1alpha1Container": V1alpha1Container,
     "V1alpha1ContainerLogStreamStatus": V1alpha1ContainerLogStreamStatus,
+    "V1alpha1ContainerState": V1alpha1ContainerState,
+    "V1alpha1ContainerStateRunning": V1alpha1ContainerStateRunning,
+    "V1alpha1ContainerStateTerminated": V1alpha1ContainerStateTerminated,
+    "V1alpha1ContainerStateWaiting": V1alpha1ContainerStateWaiting,
     "V1alpha1ExecAction": V1alpha1ExecAction,
     "V1alpha1FileEvent": V1alpha1FileEvent,
     "V1alpha1FileWatch": V1alpha1FileWatch,
@@ -151,6 +216,13 @@ let typeMap: {[index: string]: any} = {
     "V1alpha1HTTPGetAction": V1alpha1HTTPGetAction,
     "V1alpha1HTTPHeader": V1alpha1HTTPHeader,
     "V1alpha1IgnoreDef": V1alpha1IgnoreDef,
+    "V1alpha1KubernetesDiscovery": V1alpha1KubernetesDiscovery,
+    "V1alpha1KubernetesDiscoveryList": V1alpha1KubernetesDiscoveryList,
+    "V1alpha1KubernetesDiscoverySpec": V1alpha1KubernetesDiscoverySpec,
+    "V1alpha1KubernetesDiscoveryStatus": V1alpha1KubernetesDiscoveryStatus,
+    "V1alpha1KubernetesWatchRef": V1alpha1KubernetesWatchRef,
+    "V1alpha1Pod": V1alpha1Pod,
+    "V1alpha1PodCondition": V1alpha1PodCondition,
     "V1alpha1PodLogStream": V1alpha1PodLogStream,
     "V1alpha1PodLogStreamList": V1alpha1PodLogStreamList,
     "V1alpha1PodLogStreamSpec": V1alpha1PodLogStreamSpec,
@@ -167,6 +239,21 @@ let typeMap: {[index: string]: any} = {
     "V1alpha1TargetStateActive": V1alpha1TargetStateActive,
     "V1alpha1TargetStateTerminated": V1alpha1TargetStateTerminated,
     "V1alpha1TargetStateWaiting": V1alpha1TargetStateWaiting,
+    "V1alpha1TiltBuild": V1alpha1TiltBuild,
+    "V1alpha1UIBuildRunning": V1alpha1UIBuildRunning,
+    "V1alpha1UIBuildTerminated": V1alpha1UIBuildTerminated,
+    "V1alpha1UIFeatureFlag": V1alpha1UIFeatureFlag,
+    "V1alpha1UIResource": V1alpha1UIResource,
+    "V1alpha1UIResourceKubernetes": V1alpha1UIResourceKubernetes,
+    "V1alpha1UIResourceLink": V1alpha1UIResourceLink,
+    "V1alpha1UIResourceList": V1alpha1UIResourceList,
+    "V1alpha1UIResourceLocal": V1alpha1UIResourceLocal,
+    "V1alpha1UIResourceStatus": V1alpha1UIResourceStatus,
+    "V1alpha1UIResourceTargetSpec": V1alpha1UIResourceTargetSpec,
+    "V1alpha1UISession": V1alpha1UISession,
+    "V1alpha1UISessionList": V1alpha1UISessionList,
+    "V1alpha1UISessionStatus": V1alpha1UISessionStatus,
+    "V1alpha1VersionSettings": V1alpha1VersionSettings,
     "VersionInfo": VersionInfo,
 }
 
