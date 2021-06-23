@@ -10,29 +10,10 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onView:tiltResources"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "tilt-explorer",
-					"title": "Tilt",
-					"icon": "media/logo.svg"
-				}
-			]
-		},
-		"views": {
-			"tilt-explorer": [
-				{
-					"id": "tiltResources",
-					"name": "Tilt",
-					"icon": "media/logo.svg",
-					"contextualTitle": "Tilt Resources"
-				}
-			]
-		}
 	},
 	"scripts": {
 		"vscode:prepublish": "yarn run compile",

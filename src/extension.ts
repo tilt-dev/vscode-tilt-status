@@ -1,11 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { KubeConfig } from '@kubernetes/client-node';
 import * as vscode from 'vscode';
 import { ext } from './extensionVariables';
-import { TiltDevV1alpha1Api } from './gen/api';
-import { newTiltClient, newTiltClientFromConfig, newTiltConfig } from './lib/client';
-import { ResourceProvider } from './resourceProvider';
+import { StatusBar } from './statusBar';
+import { newTiltClientFromConfig, newTiltConfig } from './lib/client';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -18,9 +16,9 @@ export function activate(context: vscode.ExtensionContext) {
 	config.currentContext = 'tilt-default';
 	ext.config = config;
 	ext.client = newTiltClientFromConfig(ext.config);
+	ext.statusBar = new StatusBar();
 
-	const resourcesProvider = new ResourceProvider();
-	vscode.window.registerTreeDataProvider('tiltResources', resourcesProvider);
+	context.subscriptions.push(ext.statusBar);
 }
 
 // this method is called when your extension is deactivated
