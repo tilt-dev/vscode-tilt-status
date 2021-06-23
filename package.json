@@ -12,16 +12,15 @@
 	"activationEvents": [
 		"*"
 	],
-	"main": "./out/extension.js",
 	"contributes": {
-		"productIconThemes": [
+		"commands": [
 			{
-				"id": "tilt-icons",
-				"label": "Tilt Icons",
-				"path": "./producticons/tilt-icon-theme.json"
+				"command": "extension.tiltstatus.start",
+				"title": "Show Tilt Status"
 			}
 		]
 	},
+	"main": "./out/extension.js",
 	"scripts": {
 		"vscode:prepublish": "yarn run compile",
 		"compile": "tsc -p ./",
