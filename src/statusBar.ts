@@ -33,7 +33,7 @@ export class StatusBar implements vscode.Disposable {
             this.statusBarItem.text = `$(check) Tilt`;
             this.statusBarItem.tooltip = "all healthy";
         } else {
-            this.statusBarItem.text = `$(warning) Tilt`;
+            this.statusBarItem.text = `$(alert) Tilt`;
             this.statusBarItem.tooltip = `non-healthy targets:\n${targets.map(t => `· ${t}`).join('\n')}`;
         }        
     }

@@ -14,6 +14,13 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"productIconThemes": [
+			{
+				"id": "tilt-icons",
+				"label": "Tilt Icons",
+				"path": "./producticons/tilt-icon-theme.json"
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "yarn run compile",

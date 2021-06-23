@@ -1,0 +1,22 @@
+{
+  "fonts": [
+    {
+      "id": "tilt-icons",
+      "src": [
+        {
+          "path": "./tilt-icons.woff",
+          "format": "woff"
+        }
+      ],
+      "weight": "normal",
+      "style": "normal"
+    }
+  ],
+  "iconDefinitions": {
+    "alert": {
+      "fontCharacter": "A",
+      "fontId": "tilt-icons"
+    },
+  }
+}
+
