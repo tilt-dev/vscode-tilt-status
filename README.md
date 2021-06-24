@@ -4,7 +4,8 @@
 
 Shows Tilt resource status in VSCode
 
-![gif](extension.gif)
+To open panel: cmd+shift+P -> Show Tilt Status
+
 
 ## Developing
 
