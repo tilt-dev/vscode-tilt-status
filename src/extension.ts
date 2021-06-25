@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 		  const sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn, true);
 		  sessions.on(CHANGE, (session) => {
 			  console.log(`Session ${session.metadata?.name} changed`);
-			  panel.webview.html = getWebviewContent(allTargetsHealthy(session));
+			  panel.webview.html = getWebviewContent(targetStatuses(session));
 		  });
 		  sessions.on(ERROR, (obj) => {
 			  console.error(`Session Watch Error: ${obj}`);
@@ -55,8 +55,8 @@ enum Status {
     error = "error"
 }
 
-function allTargetsHealthy(session: V1alpha1Session): boolean | undefined {
-    return session.status?.targets?.every(t => targetStatus(t) === Status.ok);
+function targetStatuses(session: V1alpha1Session): {name: string, status: Status}[] | undefined {
+    return session.status?.targets?.map(t => ({name: t.name, status: targetStatus(t)}));
 }
 
 function targetStatus(target: V1alpha1Target): Status {
@@ -86,12 +86,18 @@ function targetStatus(target: V1alpha1Target): Status {
 const angryGooseGifUrl = "https://i.giphy.com/media/46FnILpX7oJKo/giphy.webp";
 const happyGooseGifUrl = "https://i.giphy.com/media/Jp3v0iCuOI3vpCFvf4/giphy.webp";
 
-function getWebviewContent(allTargetsHealthy: boolean | undefined) {
-	if (allTargetsHealthy === undefined) {
+const statusColors = new Map<Status, string>([
+	[Status.ok, "green"],
+	[Status.error, "red"],
+	[Status.pending, "yellow"],
+]);
+
+function getWebviewContent(targetStatuses: {name: string, status: Status}[] | undefined) {
+	if (targetStatuses === undefined) {
 		return `<html>Loading...</html>`;
 	}
 
-	const gifUrl = allTargetsHealthy ? happyGooseGifUrl : angryGooseGifUrl;
+	const gifUrl = targetStatuses?.every(({status}) => status === Status.ok) ? happyGooseGifUrl : angryGooseGifUrl;
 	return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -101,6 +107,14 @@ function getWebviewContent(allTargetsHealthy: boolean | undefined) {
   </head>
   <body>
 	  <img src="${gifUrl}" width="300" />
+	  <table>
+	  ${targetStatuses.map(({name, status}) => {
+		  return `<tr>
+		    <td>${name}</td>
+			<td style="color: ${statusColors.get(status) || "black"}">${status}</td>
+			</tr>`;
+	  }).join("\n")}
+	  </table>
   </body>
   </html>`;
 }

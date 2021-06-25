@@ -1,11 +1,12 @@
 {
 	"compilerOptions": {
+		"jsx": "preserve",
 		"esModuleInterop": true,
 		"module": "commonjs",
-		"target": "es6",
+		"target": "es2017",
 		"outDir": "out",
 		"lib": [
-			"es6"
+			"es2017"
 		],
 		"sourceMap": true,
 		"rootDir": "src",
@@ -15,6 +16,10 @@
 		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
 	},
+	"include": [
+		"./src/**/*.ts",
+		"./src/**/*.tsx",
+	],
 	"exclude": [
 		"node_modules",
 		".vscode-test"
