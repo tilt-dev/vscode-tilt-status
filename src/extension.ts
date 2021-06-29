@@ -5,6 +5,7 @@ import { ext } from './extensionVariables';
 import { newTiltClientFromConfig, newTiltConfig } from './lib/client';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import { CHANGE, ERROR, ListWatch, Watch } from '@kubernetes/client-node';
+import fetch from 'node-fetch';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -18,13 +19,17 @@ export function activate(context: vscode.ExtensionContext) {
 	ext.config = config;
 	ext.client = newTiltClientFromConfig(ext.config);
 
+	let currentSession: V1alpha1Session | undefined = undefined;
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('extension.tiltstatus.start', () => {
 		  const panel = vscode.window.createWebviewPanel(
 			'tiltStatus',
 			'Tilt Status',
 			vscode.ViewColumn.Beside,
-			{}
+			{
+				enableScripts: true,
+			}
 		  );
 
 		  panel.title = "Tilt Status";
@@ -34,14 +39,62 @@ export function activate(context: vscode.ExtensionContext) {
 		  const sessionListFn = () => ext.client.listSession();
 		  const sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn, true);
 		  sessions.on(CHANGE, (session) => {
-			  console.log(`Session ${session.metadata?.name} changed`);
+			  currentSession = session;
 			  panel.webview.html = getWebviewContent(targetStatuses(session));
 		  });
 		  sessions.on(ERROR, (obj) => {
 			  console.error(`Session Watch Error: ${obj}`);
 		  });
+
+		  panel.webview.onDidReceiveMessage(
+			  message => {
+				  switch (message.command) {
+					  case 'trigger':
+						  if (!currentSession) {
+							  return;
+						  }
+						  const resourceName = resourceNameFromTargetName(message.targetName, currentSession);
+						  if (!resourceName) {
+							  return;
+						  }
+						  triggerBuild(resourceName);
+						  return;
+				  }
+			  },
+			  null
+		  );
 		})
 	  );
+}
+
+function resourceNameFromTargetName(targetName: string, session: V1alpha1Session): string | undefined {
+	const targets = session.status?.targets.filter(t => t.name === targetName);
+	if (!targets?.length || !targets[0].resources?.length) {
+		return undefined;
+	}
+	// for now, assume every target has one resource
+	return targets[0].resources[0];
+}
+
+function triggerBuild(resourceName: string) {
+	// This assumes Tilt is running on localhost:10350. Ideally we'd be doing this through the Tilt object API
+	// instead of the legacy API, but that's not supported yet.
+	let url = "http://localhost:10350/api/trigger";
+	
+	console.log(`triggering ${resourceName}`);
+	fetch(url, {
+		method: "post",
+		body: JSON.stringify({
+			manifest_names: [resourceName],
+			build_reason: 16 /* BuildReasonFlagTriggerWeb */,
+		}),
+	}).then((response) => {
+		if (!response.ok) {
+			console.log(`failed to trigger ${resourceName}`, response.status, response);
+		} else {
+			console.log("successfully triggered");
+		}
+	});
 }
 
 // this method is called when your extension is deactivated
@@ -92,6 +145,19 @@ const statusColors = new Map<Status, string>([
 	[Status.pending, "yellow"],
 ]);
 
+function targetRow(name: string, status: Status) {
+	return `<tr>
+		<td>${name}</td>
+		<td style="color: ${statusColors.get(status) || "black"}">${status}</td>
+		<td>
+			<button onClick={triggerTarget("${name}")}
+			        style="border: transparent; background: transparent; border: none;">
+			🔄
+			</button>
+		</td>
+	</tr>`;
+}
+
 function getWebviewContent(targetStatuses: {name: string, status: Status}[] | undefined) {
 	if (targetStatuses === undefined) {
 		return `<html>Loading...</html>`;
@@ -105,15 +171,18 @@ function getWebviewContent(targetStatuses: {name: string, status: Status}[] | un
 	  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	  <title>Tilt Status</title>
   </head>
+  <script>
+    // the webview can't talk to tilt directly because of CORS, so it has to send a message to the extension
+	// and have vscode make the call for it
+  	const vscode = acquireVsCodeApi();
+  	function triggerTarget(targetName) {
+		vscode.postMessage({command: 'trigger', targetName: targetName});
+	}
+  </script>
   <body>
 	  <img src="${gifUrl}" width="300" />
 	  <table>
-	  ${targetStatuses.map(({name, status}) => {
-		  return `<tr>
-		    <td>${name}</td>
-			<td style="color: ${statusColors.get(status) || "black"}">${status}</td>
-			</tr>`;
-	  }).join("\n")}
+	  ${targetStatuses.map(({name, status}) => targetRow(name, status)).join("\n")}
 	  </table>
   </body>
   </html>`;

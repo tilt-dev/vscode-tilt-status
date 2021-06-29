@@ -44,7 +44,9 @@
 	},
 	"dependencies": {
 		"@kubernetes/client-node": "^0.14.3",
+		"@types/node-fetch": "^2.5.10",
 		"date-fns": "^2.21.3",
+		"node-fetch": "^2.6.1",
 		"timeago.js": "^4.0.2"
 	}
 }
