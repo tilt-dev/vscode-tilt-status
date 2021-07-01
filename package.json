@@ -6,7 +6,7 @@
 	"icon": "images/tilt.png",
 	"repository": {
 		"type": "git",
-		"url": "github.com/tilt-dev/vscode-tilt-status"
+		"url": "https://github.com/tilt-dev/vscode-tilt-status"
 	},
 	"version": "0.0.2",
 	"engines": {
@@ -15,7 +15,7 @@
 	"categories": [
 		"Other"
 	],
-	"preview": "true",
+	"preview": true,
 	"activationEvents": [
 		"*"
 	],

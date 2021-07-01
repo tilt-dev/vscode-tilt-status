@@ -22,11 +22,21 @@ export function activate(context: vscode.ExtensionContext) {
 	ext.client = newTiltClientFromConfig(ext.config);
 
 	const statusBar = new StatusBar();
+	context.subscriptions.push(statusBar);
 	let sessionSubscribers: SessionSubscriber[] = [statusBar];
 	let currentSession: V1alpha1Session | undefined = undefined;
 	const sessionWatch = new Watch(ext.config);
-	const sessionListFn = () => ext.client.listSession();
-	const sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn, true);
+	const sessionListFn = () => {
+		return ext.client.listSession().catch(err => {
+			console.log(`error watching sessions: ${err}`);
+			throw err;
+		});
+	};
+	// not using autostart since it creates a floating promise whose errors can't be caught.
+	const sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn);
+	sessions.start().catch(err => {
+		console.log(`error starting sessions ListWatch: ${err}`);
+	});
 	sessions.on(CHANGE, (session) => {
 		currentSession = session;
 		sessionSubscribers.forEach(s => s.updateSession(session));
@@ -39,6 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('extension.tiltstatus.start', () => {
 			if (!sessionSubscribers.some(s => s instanceof TiltPanel)) {
 				const panel = new TiltPanel();
+				context.subscriptions.push(panel);
 				if (currentSession) {
 					panel.updateSession(currentSession);
 				}
