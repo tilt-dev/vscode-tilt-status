@@ -3,8 +3,12 @@
 	"displayName": "Tilt Status",
 	"description": "Interact with Tilt from VSCode",
 	"publisher": "tilt-dev",
-	"repository": "github.com/tilt-dev/vscode-tilt-status",
-	"version": "0.0.1",
+	"icon": "images/tilt.png",
+	"repository": {
+		"type": "git",
+		"github.com/tilt-dev/vscode-tilt-status"
+	},
+	"version": "0.0.2",
 	"engines": {
 		"vscode": "^1.56.0"
 	},
