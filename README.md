@@ -4,9 +4,6 @@
 
 Shows Tilt resource status in VSCode
 
-To open panel: cmd+shift+P -> Show Tilt Status
-
-
 ## Developing
 
 1. In this directory, `yarn install`
