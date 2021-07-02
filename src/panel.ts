@@ -1,7 +1,8 @@
-import { Status, aggregateStatus, targetStatus, SessionSubscriber } from "./status";
+import { Status, aggregateStatus, targetStatus} from "./status";
 import * as vscode from 'vscode';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import fetch from 'node-fetch';
+import { SessionSubscriber } from "./watcher";
 
 
 export class TiltPanel implements vscode.Disposable, SessionSubscriber {
@@ -19,6 +20,8 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
           );
     
         this.panel.title = "Tilt Status";
+
+        this.updateSession(undefined);
     
         this.panel.webview.onDidReceiveMessage(
             message => {
@@ -42,7 +45,7 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
         this.panel.dispose();
     }
 
-    updateSession(session: V1alpha1Session) {
+    updateSession(session: V1alpha1Session | undefined) {
         this.currentSession = session;
         this.panel.webview.html = getWebviewContent(session);
     }
@@ -77,7 +80,7 @@ const gifUrls = new Map<string,string>([
 
 function getWebviewContent(session: V1alpha1Session | undefined) {
 	if (session === undefined) {
-		return `<html>Loading...</html>`;
+		return `<html>Waiting for Tilt API Server...</html>`;
 	}
 
 	const gifUrl = gifUrls.get(aggregateStatus(session));

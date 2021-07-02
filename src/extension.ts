@@ -1,60 +1,32 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { ext } from './extensionVariables';
-import { newTiltClientFromConfig, newTiltConfig } from './lib/client';
-import { CHANGE, ERROR, ListWatch, Watch } from '@kubernetes/client-node';
-import { SessionSubscriber } from './status';
 import { TiltPanel } from './panel';
 import { StatusBar } from './statusBar';
-import { V1alpha1Session } from './gen/api';
+import { SessionWatcher } from './watcher';
+
+let watcher: SessionWatcher;
+let panel: TiltPanel | undefined;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	console.log('tilt-vscode extension loaded');
 
-	ext.context = context;
-
-	const config = newTiltConfig();
-	config.currentContext = 'tilt-default';
-	ext.config = config;
-	ext.client = newTiltClientFromConfig(ext.config);
+	watcher = new SessionWatcher();
+	context.subscriptions.push(watcher);
 
 	const statusBar = new StatusBar();
 	context.subscriptions.push(statusBar);
-	let sessionSubscribers: SessionSubscriber[] = [statusBar];
-	let currentSession: V1alpha1Session | undefined = undefined;
-	const sessionWatch = new Watch(ext.config);
-	const sessionListFn = () => {
-		return ext.client.listSession().catch(err => {
-			console.log(`error watching sessions: ${err}`);
-			throw err;
-		});
-	};
-	// not using autostart since it creates a floating promise whose errors can't be caught.
-	const sessions = new ListWatch('/apis/tilt.dev/v1alpha1/sessions', sessionWatch, sessionListFn);
-	sessions.start().catch(err => {
-		console.log(`error starting sessions ListWatch: ${err}`);
-	});
-	sessions.on(CHANGE, (session) => {
-		currentSession = session;
-		sessionSubscribers.forEach(s => s.updateSession(session));
-	});
-	sessions.on(ERROR, (obj) => {
-		console.error(`Session Watch Error: ${obj}`);
-	});
+	watcher.addSubscriber(statusBar);
+
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('extension.tiltstatus.start', () => {
-			if (!sessionSubscribers.some(s => s instanceof TiltPanel)) {
-				const panel = new TiltPanel();
+			if (!panel) {
+				panel = new TiltPanel();
+				watcher.addSubscriber(panel);
 				context.subscriptions.push(panel);
-				if (currentSession) {
-					panel.updateSession(currentSession);
-				}
-				sessionSubscribers.push(panel);
-
 			}
 		})
 	  );

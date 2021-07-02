@@ -8,10 +8,6 @@ export enum Status {
     error = "error"
 }
 
-export interface SessionSubscriber {
-	updateSession(session: V1alpha1Session): void;
-}
-
 export function aggregateStatus(session: V1alpha1Session): Status {
     const statuses = session?.status?.targets.map(targetStatus);
     if (!statuses) {

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
-import { aggregateStatus, SessionSubscriber, Status } from './status';
+import { aggregateStatus, Status } from './status';
+import { SessionSubscriber } from './watcher';
 
 const player = require('play-sound')({});
 
@@ -22,16 +23,24 @@ export class StatusBar implements vscode.Disposable, SessionSubscriber {
         this.statusBarItem.dispose();
     }
 
-    updateSession(session: V1alpha1Session) {
-        this.setUnhealthyTargets(aggregateStatus(session), unhealthyTargetNames(session));
+    updateSession(session: V1alpha1Session | undefined) {
+        if (session === undefined) {
+            this.setUnhealthyTargets(undefined, []);
+        } else {
+            this.setUnhealthyTargets(aggregateStatus(session), unhealthyTargetNames(session));
+        }
     }
 
-    setUnhealthyTargets(status: Status, targets: string[]) {
+    setUnhealthyTargets(status: Status | undefined, targets: string[]) {
+        this.statusBarItem.tooltip = "";
+        this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBar.background');
         switch (status) {
+            case undefined:
+                this.statusBarItem.text = `$(question) Tilt`;
+                break;
             case Status.ok:
                 this.statusBarItem.text = `$(check) Tilt`;
                 this.statusBarItem.tooltip = "all healthy";
-                this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBar.background');
                 break;
             case Status.error:
                 // if any of the unhealthy targets were not already in the list of unhealthy targets
@@ -45,7 +54,6 @@ export class StatusBar implements vscode.Disposable, SessionSubscriber {
             case Status.pending:
                 this.statusBarItem.text = `$(clock) Tilt`;
                 this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentForeground');
-                this.statusBarItem.tooltip = undefined;
                 break;
         }
 
