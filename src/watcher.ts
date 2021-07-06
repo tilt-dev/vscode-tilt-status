@@ -7,7 +7,6 @@ export interface SessionSubscriber {
 	updateSession(session: V1alpha1Session | undefined): void;
 }
 
-// XXX bump to 5000
 const reconnectIntervalMs = 5000;
 
 export class SessionWatcher implements Disposable {

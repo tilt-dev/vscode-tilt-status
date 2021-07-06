@@ -6,7 +6,6 @@ import { StatusBar } from './statusBar';
 import { SessionWatcher } from './watcher';
 
 let watcher: SessionWatcher;
-let panel: TiltPanel | undefined;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -23,11 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('extension.tiltstatus.start', () => {
-			if (!panel) {
-				panel = new TiltPanel();
-				watcher.addSubscriber(panel);
-				context.subscriptions.push(panel);
-			}
+			TiltPanel.createOrShow();
 		})
 	  );
 }

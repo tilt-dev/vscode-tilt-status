@@ -7,10 +7,23 @@ import { SessionSubscriber } from "./watcher";
 
 export class TiltPanel implements vscode.Disposable, SessionSubscriber {
 	currentSession: V1alpha1Session | undefined = undefined;
-    panel: vscode.WebviewPanel;
+    static currentPanel: TiltPanel | undefined;
 
-    constructor() {
-        this.panel = vscode.window.createWebviewPanel(
+    private readonly _panel: vscode.WebviewPanel;
+
+    public static createOrShow() {
+		const column = vscode.window.activeTextEditor
+			? vscode.window.activeTextEditor.viewColumn
+			: undefined;
+
+		// If we already have a panel, show it.
+		if (TiltPanel.currentPanel) {
+			TiltPanel.currentPanel._panel.reveal(column);
+			return;
+		}
+
+		// Otherwise, create a new panel.
+		const panel = vscode.window.createWebviewPanel(
             'tiltStatus',
             'Tilt Status',
             vscode.ViewColumn.Beside,
@@ -18,12 +31,20 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
                 enableScripts: true,
             }
           );
-    
-        this.panel.title = "Tilt Status";
+
+		TiltPanel.currentPanel = new TiltPanel(panel);
+	}
+
+    constructor(panel: vscode.WebviewPanel) {
+        this._panel = panel;
+
+        this._panel.title = "Tilt Status";
+
+        this._panel.onDidDispose(() => this.dispose());
 
         this.updateSession(undefined);
     
-        this.panel.webview.onDidReceiveMessage(
+        this._panel.webview.onDidReceiveMessage(
             message => {
                 switch (message.command) {
                     case 'triggerResource':
@@ -42,12 +63,13 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
     }
 
     dispose() {
-        this.panel.dispose();
+        TiltPanel.currentPanel = undefined;
+        this._panel.dispose();
     }
 
     updateSession(session: V1alpha1Session | undefined) {
         this.currentSession = session;
-        this.panel.webview.html = getWebviewContent(session);
+        this._panel.webview.html = getWebviewContent(session);
     }
 }
 
