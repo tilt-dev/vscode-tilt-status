@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('extension.tiltstatus.start', () => {
-			TiltPanel.createOrShow();
+			TiltPanel.createOrShow(watcher);
 		})
 	  );
 }

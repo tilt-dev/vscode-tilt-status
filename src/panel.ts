@@ -2,7 +2,7 @@ import { Status, aggregateStatus, targetStatus} from "./status";
 import * as vscode from 'vscode';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import fetch from 'node-fetch';
-import { SessionSubscriber } from "./watcher";
+import { SessionSubscriber, SessionWatcher } from "./watcher";
 
 
 export class TiltPanel implements vscode.Disposable, SessionSubscriber {
@@ -10,8 +10,9 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
     static currentPanel: TiltPanel | undefined;
 
     private readonly _panel: vscode.WebviewPanel;
+    private readonly watcher: SessionWatcher;
 
-    public static createOrShow() {
+    public static createOrShow(watcher: SessionWatcher) {
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -32,10 +33,10 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
             }
           );
 
-		TiltPanel.currentPanel = new TiltPanel(panel);
+		TiltPanel.currentPanel = new TiltPanel(panel, watcher);
 	}
 
-    constructor(panel: vscode.WebviewPanel) {
+    constructor(panel: vscode.WebviewPanel, watcher: SessionWatcher) {
         this._panel = panel;
 
         this._panel.title = "Tilt Status";
@@ -60,10 +61,14 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
             },
             null
           );
+
+          this.watcher = watcher;
+          watcher.addSubscriber(this);
     }
 
     dispose() {
         TiltPanel.currentPanel = undefined;
+        this.watcher.removeSubscriber(this);
         this._panel.dispose();
     }
 

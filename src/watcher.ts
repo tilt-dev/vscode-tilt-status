@@ -16,7 +16,7 @@ export class SessionWatcher implements Disposable {
     private reconnectTimeout: NodeJS.Timeout | undefined;
 
     constructor() {
-            this.startWatch();
+        this.startWatch();
     }
 
     private startWatch() {
@@ -72,6 +72,10 @@ export class SessionWatcher implements Disposable {
         if (this.currentSession) {
             s.updateSession(this.currentSession);
         }
+    }
+
+    removeSubscriber(s: SessionSubscriber) {
+        this.subscribers = this.subscribers.filter(a => a !== s);
     }
 
     dispose() {
