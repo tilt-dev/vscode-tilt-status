@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import fetch from 'node-fetch';
 import { SessionSubscriber, SessionWatcher } from "./watcher";
+import * as path from 'path';
 
 
 export class TiltPanel implements vscode.Disposable, SessionSubscriber {
@@ -11,8 +12,9 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
 
     private readonly _panel: vscode.WebviewPanel;
     private readonly watcher: SessionWatcher;
+    private readonly extensionUri: vscode.Uri;
 
-    public static createOrShow(watcher: SessionWatcher) {
+public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -30,13 +32,15 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true,
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
             }
           );
 
-		TiltPanel.currentPanel = new TiltPanel(panel, watcher);
+		TiltPanel.currentPanel = new TiltPanel(panel, extensionUri, watcher);
 	}
 
-    constructor(panel: vscode.WebviewPanel, watcher: SessionWatcher) {
+    constructor(panel: vscode.WebviewPanel, extensionPath: vscode.Uri, watcher: SessionWatcher) {
+        this.extensionUri = extensionPath;
         this._panel = panel;
 
         this._panel.title = "Tilt Status";
@@ -74,7 +78,41 @@ export class TiltPanel implements vscode.Disposable, SessionSubscriber {
 
     updateSession(session: V1alpha1Session | undefined) {
         this.currentSession = session;
-        this._panel.webview.html = getWebviewContent(session);
+        this._panel.webview.html = this.getWebviewContent(session);
+    }
+
+    mediaUri(path: string): string {
+        return this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', path)).toString();
+    }
+
+    getWebviewContent(session: V1alpha1Session | undefined): string {
+        if (session === undefined) {
+            return `<html>Waiting for Tilt API Server...</html>`;
+        }
+
+        const status = aggregateStatus(session);
+    
+        return `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Tilt Status</title>
+      </head>
+      <script src="${this.mediaUri('libgif/libgif.js')}" ></script>
+      <script src="${this.mediaUri('main.js')}"></script>
+      <script>
+        document.addEventListener("DOMContentLoaded", function(){
+            loadGif("${this.mediaUri('')}");
+        });
+      </script>
+      <body>
+          <span id="status-gif" status="${status}"></span>
+          <table>
+          ${session.status?.targets.map(t => targetRow(t)).join("\n")}
+          </table>
+      </body>
+      </html>`;
     }
 }
 
@@ -97,42 +135,6 @@ function targetRow(t: V1alpha1Target) {
 		<td style="color: ${statusColors.get(status) || "black"}">${status}</td>
 		${button}
 	</tr>`;
-}
-
-const gifUrls = new Map<string,string>([
-    [Status.ok, "https://i.giphy.com/media/Jp3v0iCuOI3vpCFvf4/giphy.webp"],
-    [Status.pending, ""],
-    [Status.error, "https://i.giphy.com/media/46FnILpX7oJKo/giphy.webp"],
-]);
-
-function getWebviewContent(session: V1alpha1Session | undefined) {
-	if (session === undefined) {
-		return `<html>Waiting for Tilt API Server...</html>`;
-	}
-
-	const gifUrl = gifUrls.get(aggregateStatus(session));
-	return `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-	  <meta charset="UTF-8">
-	  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	  <title>Tilt Status</title>
-  </head>
-  <script>
-    // the webview can't talk to tilt directly because of CORS, so it has to send a message to the extension
-	// and have vscode make the call for it
-  	const vscode = acquireVsCodeApi();
-  	function triggerResource(name) {
-		vscode.postMessage({command: 'triggerResource', resourceName: name});
-	}
-  </script>
-  <body>
-	  <img src="${gifUrl}" width="300" />
-	  <table>
-	  ${session.status?.targets.map(t => targetRow(t)).join("\n")}
-	  </table>
-  </body>
-  </html>`;
 }
 
 function triggerBuild(resourceName: string) {
