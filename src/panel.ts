@@ -45,6 +45,8 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
 
         this._panel.title = "Tilt Status";
 
+        this._panel.webview.html = this.getWebviewContent();
+
         this._panel.onDidDispose(() => this.dispose());
 
         this.updateSession(undefined);
@@ -77,21 +79,21 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
     }
 
     updateSession(session: V1alpha1Session | undefined) {
+        if (!this._panel) {
+            return;
+        }
         this.currentSession = session;
-        this._panel.webview.html = this.getWebviewContent(session);
+        this._panel.webview.postMessage({
+            command: 'setSession',
+            session: session,
+        });
     }
 
     mediaUri(path: string): string {
         return this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', path)).toString();
     }
 
-    getWebviewContent(session: V1alpha1Session | undefined): string {
-        if (session === undefined) {
-            return `<html>Waiting for Tilt API Server...</html>`;
-        }
-
-        const status = aggregateStatus(session);
-    
+    getWebviewContent(): string {    
         return `<!DOCTYPE html>
       <html lang="en">
       <head>
@@ -102,39 +104,16 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
       <script src="${this.mediaUri('libgif/libgif.js')}" ></script>
       <script src="${this.mediaUri('main.js')}"></script>
       <script>
-        document.addEventListener("DOMContentLoaded", function(){
-            loadGif("${this.mediaUri('')}");
+        window.addEventListener('message', event => {
+            handleEvent(event, "${this.mediaUri('')}")
         });
       </script>
       <body>
-          <span id="status-gif" status="${status}"></span>
-          <table>
-          ${session.status?.targets.map(t => targetRow(t)).join("\n")}
-          </table>
+      <span id="status-gif" style="width:160px; height:160px; display:block;"></span>
+      <span id="status-table"></span>
       </body>
       </html>`;
     }
-}
-
-const statusColors = new Map<Status, string>([
-	[Status.ok, "green"],
-	[Status.error, "red"],
-	[Status.pending, "yellow"],
-]);
-
-function targetRow(t: V1alpha1Target) {
-    const status = targetStatus(t);
-    const button = !t.resources.length ? "" : `<td>
-        <button onClick={triggerResource("${t.resources[0]}")}
-                style="border: transparent; background: transparent; border: none;">
-        🔄
-        </button>
-    </td>`;
-	return `<tr>
-		<td>${t.name}</td>
-		<td style="color: ${statusColors.get(status) || "black"}">${status}</td>
-		${button}
-	</tr>`;
 }
 
 function triggerBuild(resourceName: string) {
