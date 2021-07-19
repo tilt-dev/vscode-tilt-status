@@ -60,10 +60,9 @@ function getNextState() {
 }
 
 function setGif(uriBase) {
-  console.log('1');
   let e = document.getElementById('status-gif');
-  console.log('2');
   let img = document.createElement('img');
+  img.setAttribute('style', 'display: none');
   currentGooseState = getNextState();
 
   const loopMode = currentGooseState === GooseState.waiting || currentGooseState === GooseState.honkedAndWaiting || currentGooseState === GooseState.absent;
@@ -76,11 +75,8 @@ function setGif(uriBase) {
     loop_mode: loopMode,
   };
 
-  console.log('3');
-
   console.log('current', currentGooseState, 'desired', desiredGooseState);
   if (currentGooseState !== GooseState.absent) {
-    console.log('4');
     const gif = GooseGifs[currentGooseState];
     console.log('playing', gif);
     img.setAttribute('rel:animated_src', uriBase + '/' + gif + '.gif');
@@ -100,14 +96,21 @@ function setGif(uriBase) {
         }
       };
     }
+  } else {
+    while (e.firstChild) {
+      e.removeChild(e.firstChild);
+    }
   }
-  console.log('5');
-
   img.setAttribute('rel:autoplay', '0');
-  e.replaceChildren(img);
+  e.appendChild(img);
 
   let g = new SuperGif(options);
-  g.load();
+  g.load(() => {
+    // perform the swap in the callback after the gif is loaded so we don't get a black flash while the
+    // gif loads
+    e.removeChild(e.firstChild);
+    img.removeAttribute('style');
+  });
 }
 
 var Status = {
