@@ -61,6 +61,9 @@ function getNextState() {
 
 function setGif(uriBase) {
   let e = document.getElementById('status-gif');
+  if (!e) {
+    return;
+  }
   let img = document.createElement('img');
   img.setAttribute('style', 'display: none');
   currentGooseState = getNextState();
@@ -108,8 +111,8 @@ function setGif(uriBase) {
   g.load(() => {
     // perform the swap in the callback after the gif is loaded so we don't get a black flash while the
     // gif loads
-    e.removeChild(e.firstChild);
     img.removeAttribute('style');
+    e.removeChild(e.firstChild);
   });
 }
 

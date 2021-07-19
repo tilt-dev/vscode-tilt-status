@@ -101,7 +101,7 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Tilt Status</title>
       </head>
-      <script src="${this.mediaUri('libgif/libgif.js')}" ></script>
+      <!--<script src="${this.mediaUri('libgif/libgif.js')}" ></script>-->
       <script src="${this.mediaUri('main.js')}"></script>
       <script>
         window.addEventListener('message', event => {
@@ -109,8 +109,8 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
         });
       </script>
       <body>
-      <span id="status-gif" style="width:160px; height:160px; display:block;"></span>
-      <span id="status-table"></span>
+        <!--<span id="status-gif" style="width:160px; height:160px; display:block;"></span>-->
+        <span id="status-table"></span>
       </body>
       </html>`;
     }
