@@ -103,17 +103,16 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Tilt Status</title>
       </head>
-      <script src="${this.mediaUri('libgif/libgif.js')}" ></script>
       <script src="${this.mediaUri('main.js')}"></script>
       <script>
         window.addEventListener('message', event => {
-            handleEvent(event, "${this.mediaUri('')}")
+            handleEvent(event)
         });
+        // hackThePlanet();
       </script>
       <body>
-        <img src="${this.mediaUri('Tilt-logo.svg')}"></img>
+        <img src="${this.mediaUri('Tilt-logo.svg')}" style="display: block; margin-left: auto; margin-right: auto;"></img>
         <span id="status-table"></span>
-        <span id="status-gif" style="position: absolute; bottom: 0;"></span>
       </body>
       </html>`;
     }

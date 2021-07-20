@@ -5,6 +5,8 @@ function triggerResource(name) {
   vscode.postMessage({command: 'triggerResource', resourceName: name});
 }
 
+const uriBase = document.currentScript.src.split('/').slice(0, -1).join("/");
+
 function honk() {
   vscode.postMessage({command: 'honk'});
 }
@@ -63,7 +65,7 @@ function getNextState() {
   console.log("no next state. current", currentGooseState, "desired", desiredGooseState);
 }
 
-function setGif(uriBase) {
+function setGif() {
   let e = document.getElementById('status-gif');
   if (!e) {
     return;
@@ -76,7 +78,6 @@ function setGif(uriBase) {
   currentGooseState = getNextState();
 
   const loopMode = currentGooseState === GooseState.waiting || currentGooseState === GooseState.honkedAndWaiting || currentGooseState === GooseState.absent;
-  console.log('currentGooseState', currentGooseState, 'loopMode', loopMode);
   const gifState = currentGooseState;
   let options = {
     gif: img,
@@ -85,21 +86,18 @@ function setGif(uriBase) {
     loop_mode: loopMode,
   };
 
-  console.log('current', currentGooseState, 'desired', desiredGooseState);
   if (currentGooseState !== GooseState.absent) {
     const gif = GooseGifs[currentGooseState];
-    console.log('playing', gif);
     img.setAttribute('rel:animated_src', uriBase + '/' + gif + '.gif');
 
     if (!loopMode) {
       pendingCallback = true;
       options.on_end = () => {
         try {
-          console.log('on_end for goose state', gifState);
           pendingCallback = false;
           const nextState = getNextState();
           if (nextState !== currentGooseState) {
-            setGif(uriBase);
+            setGif();
           }
         } catch (err) {
           console.log('error in on_end', err);
@@ -118,7 +116,9 @@ function setGif(uriBase) {
   g.load(() => {
     // perform the swap in the callback after the gif is loaded so we don't get a black flash while the
     // gif loads
-    e.removeChild(e.firstChild);
+    if (e.firstChild !== e.lastChild) {
+      e.removeChild(e.firstChild);
+    }
     e.lastChild.style.display = '';
     if (prevGooseState === GooseState.walkingIn && currentGooseState === GooseState.honking) {
       honk();
@@ -237,32 +237,47 @@ function updateTable(session) {
 var lastStatus = Status.ok;
 var pendingCallback = false;
 
-function updateGif(session, uriBase) {
+function updateGif(session) {
   let newStatus = aggregateStatus(session);
-  console.log('lastStatus', lastStatus, 'newStatus', newStatus);
   if (lastStatus !== Status.error && newStatus === Status.error) {
     desiredGooseState = GooseState.honkedAndWaiting;
   } else if (newStatus === Status.ok) {
     desiredGooseState = GooseState.absent;
   }
-  console.log('desired state is now', desiredGooseState);
-  console.log('pendingCallback', pendingCallback);
   if (!pendingCallback) {
-    setGif(uriBase);
+    setGif();
   }
   lastStatus = newStatus;
 }
 
-function handleEvent(event, uriBase) {
+function handleEvent(event) {
   const message = event.data;
   try {
     switch (message.command) {
       case 'setSession':
         updateTable(message.session);
-        updateGif(message.session, uriBase);
+        updateGif(message.session);
         break;
     }
   } catch (err) {
     console.log('error handling message', err);
   }
+}
+
+function hackThePlanet() {
+  window.onload = () => {
+    var script = document.createElement('script');
+    script.src = uriBase + '/libgif/libgif.js';
+    script.onload = () => {
+      var gifSpan = document.createElement('span');
+      gifSpan.id = 'status-gif';
+      gifSpan.style.position = 'absolute';
+      gifSpan.style.bottom = 0;
+      document.getElementById('status-table').parentElement.appendChild(gifSpan);
+
+      setGif();
+    };
+  
+    document.getElementsByTagName("head")[0].appendChild(script);
+  };
 }
