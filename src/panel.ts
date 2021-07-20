@@ -111,6 +111,7 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
         });
       </script>
       <body>
+        <img src="${this.mediaUri('Tilt-logo.svg')}"></img>
         <span id="status-table"></span>
         <span id="status-gif" style="position: absolute; bottom: 0;"></span>
       </body>
