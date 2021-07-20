@@ -1,9 +1,8 @@
-import { Status, aggregateStatus, targetStatus} from "./status";
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { V1alpha1Session, V1alpha1Target } from './gen/api';
 import fetch from 'node-fetch';
 import { SessionSubscriber, SessionWatcher } from "./watcher";
-import * as path from 'path';
 
 
 export class TiltPanel implements vscode.Disposable, SessionSubscriber {
@@ -60,6 +59,9 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
                         }
                         triggerBuild(message.resourceName);
                         break;
+                    case 'honk':
+                        honk();
+                        break;
                     default:
                         console.log(`got message with unknown command ${message.command}`);
                         break;
@@ -101,7 +103,7 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Tilt Status</title>
       </head>
-      <!--<script src="${this.mediaUri('libgif/libgif.js')}" ></script>-->
+      <script src="${this.mediaUri('libgif/libgif.js')}" ></script>
       <script src="${this.mediaUri('main.js')}"></script>
       <script>
         window.addEventListener('message', event => {
@@ -109,8 +111,8 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
         });
       </script>
       <body>
-        <!--<span id="status-gif" style="width:160px; height:160px; display:block;"></span>-->
         <span id="status-table"></span>
+        <span id="status-gif" style="position: absolute; bottom: 0;"></span>
       </body>
       </html>`;
     }
@@ -132,4 +134,14 @@ function triggerBuild(resourceName: string) {
 			console.log(`failed to trigger ${resourceName}`, response.status, response);
 		}
 	});
+}
+
+const player = require('play-sound')({});
+function honk() {
+    player.play(path.join(__dirname, '..', 'audio', 'honk.wav'), function(err: any){
+        if (err) {
+            console.log('play-sound error', err);
+            throw err;
+        }
+      });
 }

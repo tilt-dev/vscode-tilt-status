@@ -5,6 +5,10 @@ function triggerResource(name) {
   vscode.postMessage({command: 'triggerResource', resourceName: name});
 }
 
+function honk() {
+  vscode.postMessage({command: 'honk'});
+}
+
 var GooseState = {
   absent: 0,
   walkingIn: 1,
@@ -65,7 +69,10 @@ function setGif(uriBase) {
     return;
   }
   let img = document.createElement('img');
-  img.setAttribute('style', 'display: none');
+  img.style.display = 'none';
+  img.style.position = 'absolute';
+  img.style.bottom = '0';
+  const prevGooseState = currentGooseState;
   currentGooseState = getNextState();
 
   const loopMode = currentGooseState === GooseState.waiting || currentGooseState === GooseState.honkedAndWaiting || currentGooseState === GooseState.absent;
@@ -111,9 +118,13 @@ function setGif(uriBase) {
   g.load(() => {
     // perform the swap in the callback after the gif is loaded so we don't get a black flash while the
     // gif loads
-    img.removeAttribute('style');
     e.removeChild(e.firstChild);
+    e.lastChild.style.display = '';
+    if (prevGooseState === GooseState.walkingIn && currentGooseState === GooseState.honking) {
+      honk();
+    }
   });
+  e.lastChild.style.display = 'none';
 }
 
 var Status = {
@@ -203,6 +214,11 @@ function makeTableRow(target) {
 }
 
 function makeTable(session) {
+  if (session === undefined) {
+    let ret = document.createElement('span');
+    ret.innerText = 'Waiting for Tilt API...';
+    return ret;
+  }
   let table = document.createElement('table');
   if (session && session.status.targets) {
     session.status.targets.forEach((target) => {
