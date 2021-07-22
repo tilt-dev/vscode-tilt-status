@@ -72,8 +72,6 @@ function setGif() {
   }
   let img = document.createElement('img');
   img.style.display = 'none';
-  img.style.position = 'absolute';
-  img.style.bottom = '0';
   const prevGooseState = currentGooseState;
   currentGooseState = getNextState();
 
@@ -84,6 +82,8 @@ function setGif() {
     progressbar_height: 0,
     draw_while_loading: 0,
     loop_mode: loopMode,
+    c_w: 128,
+    c_h: 128,
   };
 
   if (currentGooseState !== GooseState.absent) {
@@ -271,10 +271,8 @@ function hackThePlanet() {
     script.onload = () => {
       var gifSpan = document.createElement('span');
       gifSpan.id = 'status-gif';
-      gifSpan.style.position = 'absolute';
-      gifSpan.style.bottom = 0;
-      document.getElementById('status-table').parentElement.appendChild(gifSpan);
-
+      const tableSpan = document.getElementById('status-table');
+      tableSpan.parentElement.insertBefore(gifSpan, tableSpan);
       setGif();
     };
   
