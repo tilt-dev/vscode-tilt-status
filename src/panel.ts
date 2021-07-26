@@ -108,7 +108,7 @@ public static createOrShow(extensionUri: vscode.Uri, watcher: SessionWatcher) {
         window.addEventListener('message', event => {
             handleEvent(event)
         });
-        // hackThePlanet();
+        hackThePlanet();
       </script>
       <body>
         <img src="${this.mediaUri('Tilt-logo.svg')}" style="display: block; margin-left: auto; margin-right: auto;"></img>
